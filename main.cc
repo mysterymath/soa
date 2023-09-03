@@ -26,7 +26,8 @@ template <typename T, size_t N> struct ArrayTuple;
 
 template <size_t N, typename T, typename... Rest>
 struct ArrayTuple<std::tuple<T, Rest...>, N> {
-  using Type = decltype(std::declval<std::tuple<T[N]>>().tuple_cat(
+  using Type = decltype(std::tuple_cat(
+      std::declval<std::tuple<T[N]>>(),
       std::declval<ArrayTuple<std::tuple<Rest...>, N>::Type>()));
 };
 
@@ -36,10 +37,14 @@ template <typename T, size_t N> class StructOfArrays {
 };
 
 int main(void) {
+  StructOfArrays<Ball, 10> balls;
+
+  /*
   struct Ball balls[10] = {0};
   balls[5].x = 10;
   balls[5].dx = 20;
   updateBalls(balls, sizeof(balls) / sizeof(Ball));
   std::cout << balls[5].x << '\n';
+  */
   return 0;
 }
