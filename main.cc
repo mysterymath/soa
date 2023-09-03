@@ -32,6 +32,7 @@ struct ArrayTuple<std::tuple<T, Rest...>, N> {
 
 template <typename T, size_t N> class StructOfArrays {
   using TupleType = decltype(boost::pfr::structure_to_tuple(std::declval<T>()));
+  using ArrayTupleType = typename ArrayTuple<TupleType, N>::Type;
 };
 
 int main(void) {
