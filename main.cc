@@ -1,9 +1,10 @@
 #include <cstdint>
-#include <initializer_list>
 #include <cstdio>
-//#include <iostream>
-//#include <tuple>
-//#include <utility>
+#include <string.h>
+#include <initializer_list>
+// #include <iostream>
+// #include <tuple>
+// #include <utility>
 
 // #include <boost/pfr.hpp>
 
@@ -36,13 +37,68 @@ public:
 };
 */
 
-struct SoAProxyBall {
-  int &x;
-  int &y;
-  int &dx;
-  int &dy;
+template <typename T> struct SoAProxyNumber {
+  static constexpr uint8_t Size = sizeof(T) / 8;
 
-  SoAProxyBall &operator=(const Ball &Other) {
+  uint8_t *Bytes[Size];
+
+public:
+  template <uint8_t N>
+  [[clang::always_inline]] constexpr SoAProxyNumber(uint8_t ByteArrays[][N],
+                                                    uint8_t Idx) {
+    for (uint8_t ByteIdx = 0; ByteIdx < Size; ++ByteIdx)
+      Bytes[ByteIdx] = &ByteArrays[ByteIdx][Idx];
+  }
+
+  [[clang::always_inline]] T operator*() const {
+    return static_cast<T>(*this);
+  }
+
+  [[clang::always_inline]] SoAProxyNumber &operator=(T Number) {
+    uint8_t *NumberBytes = reinterpret_cast<uint8_t*>(&Number);
+    for (uint8_t Idx = 0; Idx < Size; ++Idx)
+      *Bytes[Idx] = NumberBytes[Idx];
+    return *this;
+  }
+
+  [[clang::always_inline]] SoAProxyNumber &operator+=(T Number) {
+    *this = static_cast<T>(*this) + Number;
+    return *this;
+  }
+
+  [[clang::always_inline]] constexpr operator T() const {
+    T Value = 0;
+    for (uint8_t Idx = 0; Idx < Size; ++Idx) {
+      Value <<= 8;
+      Value |= *Bytes[Idx];
+    }
+    return Value;
+  }
+};
+
+template <typename T, uint8_t N> class StructOfNumberByteArrays {
+  uint8_t ByteArrays[sizeof(T) / 8][N];
+
+public:
+  [[clang::always_inline]] constexpr StructOfNumberByteArrays(
+      std::initializer_list<T> Numbers = {}) {
+    uint8_t Idx = 0;
+    for (const T Number : Numbers)
+      (*this)[Idx++] = Number;
+  }
+
+  [[clang::always_inline]] constexpr SoAProxyNumber<T> operator[](uint8_t Idx) {
+    return {ByteArrays, Idx};
+  }
+};
+
+struct SoAProxyBall {
+  SoAProxyNumber<int> x;
+  SoAProxyNumber<int> y;
+  SoAProxyNumber<int> dx;
+  SoAProxyNumber<int> dy;
+
+  [[clang::always_inline]] SoAProxyBall &operator=(const Ball &Other) {
     x = Other.x;
     y = Other.y;
     dx = Other.dx;
@@ -52,23 +108,24 @@ struct SoAProxyBall {
 };
 
 template <uint8_t N> class StructOfArraysBall {
-  int x[N];
-  int y[N];
-  int dx[N];
-  int dy[N];
+  StructOfNumberByteArrays<int, N> x;
+  StructOfNumberByteArrays<int, N> y;
+  StructOfNumberByteArrays<int, N> dx;
+  StructOfNumberByteArrays<int, N> dy;
 
 public:
-  constexpr StructOfArraysBall(std::initializer_list<Ball> Balls) {
+  [[clang::always_inline]] constexpr StructOfArraysBall(
+      std::initializer_list<Ball> Balls = {}) {
     uint8_t Idx = 0;
     for (const auto &Ball : Balls)
-      (*this)[Idx] = Ball;
+      (*this)[Idx++] = Ball;
   }
 
-  constexpr SoAProxyBall operator[](uint8_t Idx) {
+  [[clang::always_inline]] constexpr SoAProxyBall operator[](uint8_t Idx) {
     return {x[Idx], y[Idx], dx[Idx], dy[Idx]};
   }
 
-  constexpr uint8_t size() const { return N; }
+  [[clang::always_inline]] constexpr uint8_t size() const { return N; }
 };
 
 StructOfArraysBall<10> balls = {Ball{.x = 10, .dx = 20}};
@@ -84,10 +141,12 @@ void updateBalls() {
     updateBall(i);
 }
 
+volatile int c;
+
 int main(void) {
-  balls[5].dy = 8;
+  balls[5].dy = c;
   updateBalls();
-  printf("%d\n", balls[5].x);
+  printf("%d\n", *balls[5].x);
 
   return 0;
 }
