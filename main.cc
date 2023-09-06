@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <string.h>
 #include <initializer_list>
+#include <type_traits>
 // #include <iostream>
 // #include <tuple>
 // #include <utility>
@@ -91,11 +92,23 @@ public:
   }
 };
 
+template <typename T, typename Enable = void>
+struct ArrayType {
+  template<size_t N> using Type = T[N];
+  using ProxyType = T&;
+};
+
+template <typename T>
+struct ArrayType<T, std::enable_if_t<std::is_integral<T>::value || std::is_enum<T>::value>> {
+  template<size_t N> using Type = StructOfNumberByteArrays<T, N>;
+  using ProxyType = SoAProxyNumber<T>;
+};
+
 struct SoAProxyBall {
-  SoAProxyNumber<int> x;
-  SoAProxyNumber<int> y;
-  SoAProxyNumber<int> dx;
-  SoAProxyNumber<int> dy;
+  ArrayType<int>::ProxyType x;
+  ArrayType<int>::ProxyType y;
+  ArrayType<int>::ProxyType dx;
+  ArrayType<int>::ProxyType dy;
 
   [[clang::always_inline]] SoAProxyBall &operator=(const Ball &Other) {
     x = Other.x;
@@ -107,10 +120,10 @@ struct SoAProxyBall {
 };
 
 template <uint8_t N> class StructOfArraysBall {
-  StructOfNumberByteArrays<int, N> x;
-  StructOfNumberByteArrays<int, N> y;
-  StructOfNumberByteArrays<int, N> dx;
-  StructOfNumberByteArrays<int, N> dy;
+  ArrayType<int>::Type<N> x;
+  ArrayType<int>::Type<N> y;
+  ArrayType<int>::Type<N> dx;
+  ArrayType<int>::Type<N> dy;
 
 public:
   [[clang::always_inline]] constexpr StructOfArraysBall(
@@ -140,19 +153,3 @@ void updateBalls() {
     updateBall(i);
 }
 
-volatile int c = 10;
-
-int main(void) {
-  StructOfNumberByteArrays<int, 2> x;
-  x[0] = 0x1234;
-  printf("%x\n", *x[0]);
-  x[1] = 0xabcd;
-  printf("%x\n", *x[1]);
-  printf("%x\n", *x[0]);
-
-  balls[5].dy = c;
-  updateBalls();
-  printf("%d\n", *balls[5].y);
-
-  return 0;
-}
