@@ -104,13 +104,20 @@ struct ArrayType<T, std::enable_if_t<std::is_integral<T>::value || std::is_enum<
   using ProxyType = SoAProxyNumber<T>;
 };
 
-struct SoAProxyBall {
+template <typename T>
+struct SoAProxy;
+
+template <typename T, size_t N>
+struct StructOfArrays;
+
+template <>
+struct SoAProxy<Ball> {
   ArrayType<int>::ProxyType x;
   ArrayType<int>::ProxyType y;
   ArrayType<int>::ProxyType dx;
   ArrayType<int>::ProxyType dy;
 
-  [[clang::always_inline]] SoAProxyBall &operator=(const Ball &Other) {
+  [[clang::always_inline]] SoAProxy<Ball> &operator=(const Ball &Other) {
     x = Other.x;
     y = Other.y;
     dx = Other.dx;
@@ -119,28 +126,28 @@ struct SoAProxyBall {
   }
 };
 
-template <uint8_t N> class StructOfArraysBall {
+template <uint8_t N> class StructOfArrays<Ball, N> {
   ArrayType<int>::Type<N> x;
   ArrayType<int>::Type<N> y;
   ArrayType<int>::Type<N> dx;
   ArrayType<int>::Type<N> dy;
 
 public:
-  [[clang::always_inline]] constexpr StructOfArraysBall(
+  [[clang::always_inline]] constexpr StructOfArrays(
       std::initializer_list<Ball> Balls = {}) {
     uint8_t Idx = 0;
     for (const auto &Ball : Balls)
       (*this)[Idx++] = Ball;
   }
 
-  [[clang::always_inline]] constexpr SoAProxyBall operator[](uint8_t Idx) {
+  [[clang::always_inline]] constexpr SoAProxy<Ball> operator[](uint8_t Idx) {
     return {x[Idx], y[Idx], dx[Idx], dy[Idx]};
   }
 
   [[clang::always_inline]] constexpr uint8_t size() const { return N; }
 };
 
-StructOfArraysBall<10> balls = {Ball{.x = 10, .dx = 20}};
+StructOfArrays<Ball, 10> balls = {Ball{.x = 10, .dx = 20}};
 
 void updateBall(uint8_t Idx) {
   auto ball = balls[Idx];
