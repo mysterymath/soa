@@ -38,15 +38,14 @@ public:
 */
 
 template <typename T> struct SoAProxyNumber {
-  static constexpr uint8_t Size = sizeof(T) / 8;
-
-  uint8_t *Bytes[Size];
+  uint8_t *Bytes[sizeof(T)];
 
 public:
   template <uint8_t N>
   [[clang::always_inline]] constexpr SoAProxyNumber(uint8_t ByteArrays[][N],
                                                     uint8_t Idx) {
-    for (uint8_t ByteIdx = 0; ByteIdx < Size; ++ByteIdx)
+#pragma unroll
+    for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
       Bytes[ByteIdx] = &ByteArrays[ByteIdx][Idx];
   }
 
@@ -56,7 +55,8 @@ public:
 
   [[clang::always_inline]] SoAProxyNumber &operator=(T Number) {
     uint8_t *NumberBytes = reinterpret_cast<uint8_t*>(&Number);
-    for (uint8_t Idx = 0; Idx < Size; ++Idx)
+#pragma unroll
+    for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       *Bytes[Idx] = NumberBytes[Idx];
     return *this;
   }
@@ -67,17 +67,16 @@ public:
   }
 
   [[clang::always_inline]] constexpr operator T() const {
-    T Value = 0;
-    for (uint8_t Idx = 0; Idx < Size; ++Idx) {
-      Value <<= 8;
-      Value |= *Bytes[Idx];
-    }
-    return Value;
+    uint8_t ByteVals[sizeof(T)];
+#pragma unroll
+    for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
+      ByteVals[Idx] = *Bytes[Idx];
+    return *reinterpret_cast<const T*>(ByteVals);
   }
 };
 
 template <typename T, uint8_t N> class StructOfNumberByteArrays {
-  uint8_t ByteArrays[sizeof(T) / 8][N];
+  uint8_t ByteArrays[sizeof(T)][N];
 
 public:
   [[clang::always_inline]] constexpr StructOfNumberByteArrays(
@@ -141,12 +140,19 @@ void updateBalls() {
     updateBall(i);
 }
 
-volatile int c;
+volatile int c = 10;
 
 int main(void) {
+  StructOfNumberByteArrays<int, 2> x;
+  x[0] = 0x1234;
+  printf("%x\n", *x[0]);
+  x[1] = 0xabcd;
+  printf("%x\n", *x[1]);
+  printf("%x\n", *x[0]);
+
   balls[5].dy = c;
   updateBalls();
-  printf("%d\n", *balls[5].x);
+  printf("%d\n", *balls[5].y);
 
   return 0;
 }
