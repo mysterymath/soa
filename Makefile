@@ -1,7 +1,7 @@
-all: main
+all: main.s
 
 clean:
-	-rm main
+	-rm main.s
 
-main: main.cc
-	${HOME}/llvm-mos/build/bin/mos-sim-clang++ -Os -fno-lto -fnonreentrant -std=c++20 -I. main.cc
+main.s: main.cc
+	${HOME}/llvm-mos/build/bin/mos-sim-clang++ -Os -fno-lto -fnonreentrant -std=c++20 -I. -S main.cc

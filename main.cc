@@ -1,20 +1,13 @@
 #include <cstdint>
 #include <cstdio>
-#include <string.h>
 #include <initializer_list>
+#include <string.h>
 #include <type_traits>
 // #include <iostream>
 // #include <tuple>
 // #include <utility>
 
 // #include <boost/pfr.hpp>
-
-struct Ball {
-  int x;
-  int y;
-  int dx;
-  int dy;
-};
 
 /*
 template <typename T, size_t N> struct ArrayTuple;
@@ -38,31 +31,31 @@ public:
 };
 */
 
-template <typename T> struct SoAProxyNumber {
+namespace soa {
+
+template <typename T> struct Number {
   uint8_t *Bytes[sizeof(T)];
 
 public:
   template <uint8_t N>
-  [[clang::always_inline]] constexpr SoAProxyNumber(uint8_t ByteArrays[][N],
-                                                    uint8_t Idx) {
+  [[clang::always_inline]] constexpr Number(uint8_t ByteArrays[][N],
+                                            uint8_t Idx) {
 #pragma unroll
     for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
       Bytes[ByteIdx] = &ByteArrays[ByteIdx][Idx];
   }
 
-  [[clang::always_inline]] T operator*() const {
-    return static_cast<T>(*this);
-  }
+  [[clang::always_inline]] T operator*() const { return static_cast<T>(*this); }
 
-  [[clang::always_inline]] SoAProxyNumber &operator=(T Number) {
-    uint8_t *NumberBytes = reinterpret_cast<uint8_t*>(&Number);
+  [[clang::always_inline]] Number &operator=(T Number) {
+    uint8_t *NumberBytes = reinterpret_cast<uint8_t *>(&Number);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       *Bytes[Idx] = NumberBytes[Idx];
     return *this;
   }
 
-  [[clang::always_inline]] SoAProxyNumber &operator+=(T Number) {
+  [[clang::always_inline]] Number &operator+=(T Number) {
     *this = static_cast<T>(*this) + Number;
     return *this;
   }
@@ -72,82 +65,97 @@ public:
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       ByteVals[Idx] = *Bytes[Idx];
-    return *reinterpret_cast<const T*>(ByteVals);
+    return *reinterpret_cast<const T *>(ByteVals);
   }
 };
 
-template <typename T, uint8_t N> class StructOfNumberByteArrays {
+template <typename T, uint8_t N> class NumberArray {
   uint8_t ByteArrays[sizeof(T)][N];
 
 public:
-  [[clang::always_inline]] constexpr StructOfNumberByteArrays(
+  [[clang::always_inline]] constexpr NumberArray(
       std::initializer_list<T> Numbers = {}) {
     uint8_t Idx = 0;
     for (const T Number : Numbers)
       (*this)[Idx++] = Number;
   }
 
-  [[clang::always_inline]] constexpr SoAProxyNumber<T> operator[](uint8_t Idx) {
+  [[clang::always_inline]] constexpr Number<T> operator[](uint8_t Idx) {
     return {ByteArrays, Idx};
   }
 };
 
-template <typename T, typename Enable = void>
-struct ArrayType {
-  template<size_t N> using Type = T[N];
-  using ProxyType = T&;
+template <typename T, typename Enable = void> struct Types {
+  template <size_t N> using Array = T[N];
+  using Reference = T &;
 };
 
 template <typename T>
-struct ArrayType<T, std::enable_if_t<std::is_integral<T>::value || std::is_enum<T>::value>> {
-  template<size_t N> using Type = StructOfNumberByteArrays<T, N>;
-  using ProxyType = SoAProxyNumber<T>;
+struct Types<
+    T, std::enable_if_t<std::is_integral<T>::value || std::is_enum<T>::value>> {
+  template <size_t N> using Array = NumberArray<T, N>;
+  using Reference = Number<T>;
 };
 
-template <typename T>
-struct SoAProxy;
+template <typename T> struct Reference;
 
-template <typename T, size_t N>
-struct StructOfArrays;
+template <typename T, size_t N> struct Array;
 
-template <>
-struct SoAProxy<Ball> {
-  ArrayType<int>::ProxyType x;
-  ArrayType<int>::ProxyType y;
-  ArrayType<int>::ProxyType dx;
-  ArrayType<int>::ProxyType dy;
+} // namespace soa
 
-  [[clang::always_inline]] SoAProxy<Ball> &operator=(const Ball &Other) {
-    x = Other.x;
-    y = Other.y;
-    dx = Other.dx;
-    dy = Other.dy;
-    return *this;
-  }
+struct Ball {
+  int x;
+  int y;
+  int dx;
+  int dy;
 };
 
-template <uint8_t N> class StructOfArrays<Ball, N> {
-  ArrayType<int>::Type<N> x;
-  ArrayType<int>::Type<N> y;
-  ArrayType<int>::Type<N> dx;
-  ArrayType<int>::Type<N> dy;
+#define DEFINE_SOA_REFERENCE                                                   \
+  template <> struct soa::Reference<Ball> {                                    \
+    soa::Types<int>::Reference x;                                              \
+    soa::Types<int>::Reference y;                                              \
+    soa::Types<int>::Reference dx;                                             \
+    soa::Types<int>::Reference dy;                                             \
+                                                                               \
+    [[clang::always_inline]] Reference<Ball> &operator=(const Ball &Other) {   \
+      x = Other.x;                                                             \
+      y = Other.y;                                                             \
+      dx = Other.dx;                                                           \
+      dy = Other.dy;                                                           \
+      return *this;                                                            \
+    }                                                                          \
+  };
 
-public:
-  [[clang::always_inline]] constexpr StructOfArrays(
-      std::initializer_list<Ball> Balls = {}) {
-    uint8_t Idx = 0;
-    for (const auto &Ball : Balls)
-      (*this)[Idx++] = Ball;
-  }
+#define DEFINE_SOA_ARRAY                                                       \
+  template <uint8_t N> class soa::Array<Ball, N> {                             \
+    Types<int>::Array<N> x;                                                    \
+    Types<int>::Array<N> y;                                                    \
+    Types<int>::Array<N> dx;                                                   \
+    Types<int>::Array<N> dy;                                                   \
+                                                                               \
+  public:                                                                      \
+    [[clang::always_inline]] constexpr Array(                                  \
+        std::initializer_list<Ball> Balls = {}) {                              \
+      uint8_t Idx = 0;                                                         \
+      for (const auto &Ball : Balls)                                           \
+        (*this)[Idx++] = Ball;                                                 \
+    }                                                                          \
+                                                                               \
+    [[clang::always_inline]] constexpr Reference<Ball>                         \
+    operator[](uint8_t Idx) {                                                  \
+      return {x[Idx], y[Idx], dx[Idx], dy[Idx]};                               \
+    }                                                                          \
+                                                                               \
+    [[clang::always_inline]] constexpr uint8_t size() const { return N; }      \
+  };
 
-  [[clang::always_inline]] constexpr SoAProxy<Ball> operator[](uint8_t Idx) {
-    return {x[Idx], y[Idx], dx[Idx], dy[Idx]};
-  }
+#define DEFINE_STRUCT_OF_ARRAYS                                                \
+  DEFINE_SOA_REFERENCE                                                         \
+  DEFINE_SOA_ARRAY
 
-  [[clang::always_inline]] constexpr uint8_t size() const { return N; }
-};
+DEFINE_STRUCT_OF_ARRAYS
 
-StructOfArrays<Ball, 10> balls = {Ball{.x = 10, .dx = 20}};
+soa::Array<Ball, 10> balls = {Ball{.x = 10, .dx = 20}};
 
 void updateBall(uint8_t Idx) {
   auto ball = balls[Idx];
@@ -159,4 +167,3 @@ void updateBalls() {
   for (int i = 0; i < balls.size(); i++)
     updateBall(i);
 }
-
