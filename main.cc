@@ -110,50 +110,9 @@ struct Ball {
   int dy;
 };
 
-#define DEFINE_SOA_REFERENCE                                                   \
-  template <> struct soa::Reference<Ball> {                                    \
-    soa::Types<int>::Reference x;                                              \
-    soa::Types<int>::Reference y;                                              \
-    soa::Types<int>::Reference dx;                                             \
-    soa::Types<int>::Reference dy;                                             \
-                                                                               \
-    [[clang::always_inline]] Reference<Ball> &operator=(const Ball &Other) {   \
-      x = Other.x;                                                             \
-      y = Other.y;                                                             \
-      dx = Other.dx;                                                           \
-      dy = Other.dy;                                                           \
-      return *this;                                                            \
-    }                                                                          \
-  };
-
-#define DEFINE_SOA_ARRAY                                                       \
-  template <uint8_t N> class soa::Array<Ball, N> {                             \
-    Types<int>::Array<N> x;                                                    \
-    Types<int>::Array<N> y;                                                    \
-    Types<int>::Array<N> dx;                                                   \
-    Types<int>::Array<N> dy;                                                   \
-                                                                               \
-  public:                                                                      \
-    [[clang::always_inline]] constexpr Array(                                  \
-        std::initializer_list<Ball> Balls = {}) {                              \
-      uint8_t Idx = 0;                                                         \
-      for (const auto &Ball : Balls)                                           \
-        (*this)[Idx++] = Ball;                                                 \
-    }                                                                          \
-                                                                               \
-    [[clang::always_inline]] constexpr Reference<Ball>                         \
-    operator[](uint8_t Idx) {                                                  \
-      return {x[Idx], y[Idx], dx[Idx], dy[Idx]};                               \
-    }                                                                          \
-                                                                               \
-    [[clang::always_inline]] constexpr uint8_t size() const { return N; }      \
-  };
-
-#define DEFINE_STRUCT_OF_ARRAYS                                                \
-  DEFINE_SOA_REFERENCE                                                         \
-  DEFINE_SOA_ARRAY
-
-DEFINE_STRUCT_OF_ARRAYS
+#define SOA_TYPE Ball
+#define SOA_MEMBERS MEMBER(x) MEMBER(y) MEMBER(dx) MEMBER(dy)
+#include <soa-impl.inc>
 
 soa::Array<Ball, 10> balls = {Ball{.x = 10, .dx = 20}};
 
