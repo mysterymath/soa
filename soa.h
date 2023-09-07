@@ -4,6 +4,15 @@
 #include <cstdint>
 #include <initializer_list>
 #include <type_traits>
+#include <utility>
+
+namespace std {
+template <typename T>              // For lvalues (T is T&),
+T &&forward(T &&param)             // take/return lvalue refs.
+{                                  // For rvalues (T is T),
+  return static_cast<T &&>(param); // take/return rvalue refs.
+}
+} // namespace std
 
 namespace soa {
 
@@ -29,6 +38,10 @@ public:
       Bytes[Idx] = *BytePtrs[Idx];
     return *reinterpret_cast<const T *>(Bytes);
   }
+
+  template <typename... ArgsT> auto operator()(ArgsT &&...Args) const -> auto {
+    return get()(std::forward(Args)...);
+  }
 };
 
 template <typename T> struct BaseRef : public BaseConstRef<T> {
@@ -48,6 +61,10 @@ public:
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       *byte_ptrs()[Idx] = Bytes[Idx];
     return *this;
+  }
+
+  template <typename... ArgsT> auto operator()(ArgsT &&...Args) -> auto {
+    return BaseConstRef<T>::get()(std::forward(Args)...);
   }
 };
 
@@ -116,6 +133,8 @@ struct Ref<T, std::enable_if_t<!std::is_const<T>::value>> : public BaseRef<T> {
     *this = *this >> Right;
     return *this;
   }
+
+  T operator->() const { return *this; }
 };
 
 template <typename T>

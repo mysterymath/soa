@@ -28,29 +28,53 @@ void updateBalls() {
 }
 #endif
 
-struct Foo {
-  const char *foo;
+struct InnerStruct {
+  const char *char_ptr;
+};
+
+struct Struct {
+  int i;
+} s;
+
+struct Functor {
+  int x;
+  int operator()() const { return x; }
 };
 
 struct Test {
-  int x;
-  Foo foo;
+  int i;
+  InnerStruct inner;
+  Struct *struct_ptr;
+  Functor functor;
 };
 
-#define SOA_STRUCT Foo
-#define SOA_MEMBERS MEMBER(foo)
+// TODO: Default initialization? = 42 in struct?
+// TODO: It'll need to POD dawg; add a check for that
+// TODO: Struct inheritance
+// TODO: Alignment
+// TODO: Volatile
+// TODO: See if we can change the ref representation to a base pointer and
+//       stride; that improves the worst case of storing one.
+// TODO: Std::forward implementation in SDK
+
+#define SOA_STRUCT InnerStruct
+#define SOA_MEMBERS MEMBER(char_ptr)
 #include <soa-struct.inc>
 
 #define SOA_STRUCT Test
-#define SOA_MEMBERS MEMBER(x) MEMBER(foo)
+#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor)
 #include <soa-struct.inc>
 
 extern soa::Array<Test, 100> TestArray;
 
 int test() {
-  TestArray[10].x = 42;
-  TestArray[10].x += 42;
-  TestArray[10].foo.foo = "Hello";
+  TestArray[10].i = 42;
+  TestArray[10].i += 42;
+  TestArray[10].inner.char_ptr = "Hello";
+  TestArray[10].struct_ptr = &s;
 
-  return TestArray[11].x;
+  (*TestArray[10].struct_ptr).i = 3;
+  TestArray[10].struct_ptr->i = 4;
+
+  return TestArray[10].functor();
 }
