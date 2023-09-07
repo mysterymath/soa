@@ -42,7 +42,7 @@ public:
                                              uint8_t Idx)
       : BaseConstRef<T>(ByteArrays, Idx) {}
 
-  [[clang::always_inline]] BaseRef &operator=(const T& Val) {
+  [[clang::always_inline]] BaseRef &operator=(const T &Val) {
     auto *Bytes = reinterpret_cast<const uint8_t *>(&Val);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
@@ -59,8 +59,61 @@ struct Ref<T, std::enable_if_t<!std::is_const<T>::value>> : public BaseRef<T> {
   [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
       : BaseRef<T>(ByteArrays, Idx) {}
 
-  [[clang::always_inline]] Ref &operator=(const T& Val) {
+  [[clang::always_inline]] Ref &operator=(const T &Val) {
     BaseRef<T>::operator=(Val);
+    return *this;
+  }
+
+  // SFINAE means that these following operator overloads only exist if
+  // the corresponding operation is defined on T.
+
+  template <typename U> Ref &operator+=(const U &Right) {
+    *this = *this + Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator-=(const U &Right) {
+    *this = *this - Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator*=(const U &Right) {
+    *this = *this * Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator/=(const U &Right) {
+    *this = *this / Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator%=(const U &Right) {
+    *this = *this % Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator^=(const U &Right) {
+    *this = *this ^ Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator&=(const U &Right) {
+    *this = *this & Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator|=(const U &Right) {
+    *this = *this | Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator<<=(const U &Right) {
+    *this = *this << Right;
+    return *this;
+  }
+
+  template <typename U> Ref &operator>>=(const U &Right) {
+    *this = *this >> Right;
     return *this;
   }
 };

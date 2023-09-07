@@ -1,6 +1,6 @@
 #include <cstdio>
-#include <string.h>
 #include <soa.h>
+#include <string.h>
 
 #if 0
 struct Ball {
@@ -47,7 +47,10 @@ struct Test {
 
 extern soa::Array<Test, 100> TestArray;
 
-void test() {
+int test() {
   TestArray[10].x = 42;
+  TestArray[10].x += 42;
   TestArray[10].foo.foo = "Hello";
+
+  return TestArray[11].x;
 }
