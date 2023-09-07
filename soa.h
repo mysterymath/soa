@@ -32,6 +32,10 @@ public:
 };
 
 template <typename T> struct BaseRef : public BaseConstRef<T> {
+  [[clang::always_inline]] uint8_t **byte_ptrs() const {
+    return const_cast<uint8_t **>(BaseConstRef<T>::BytePtrs);
+  }
+
 public:
   template <uint8_t N>
   [[clang::always_inline]] constexpr BaseRef(uint8_t ByteArrays[][N],
@@ -45,22 +49,23 @@ public:
       *byte_ptrs()[Idx] = Bytes[Idx];
     return *this;
   }
-
-  [[clang::always_inline]] uint8_t **byte_ptrs() const {
-    return const_cast<uint8_t **>(BaseConstRef<T>::BytePtrs);
-  }
 };
 
-template <typename T> struct Ref : public BaseRef<T> {
+template <typename T, typename Enable = void> struct Ref;
+
+template <typename T>
+struct Ref<T, std::enable_if_t<!std::is_const<T>::value>> : public BaseRef<T> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
       : BaseRef<T>(ByteArrays, Idx) {}
 };
 
-template <typename T> struct ConstRef : public BaseConstRef<T> {
+template <typename T>
+struct Ref<T, std::enable_if_t<std::is_const<T>::value>>
+    : public BaseConstRef<T> {
   template <uint8_t N>
-  [[clang::always_inline]] constexpr ConstRef(const uint8_t ByteArrays[][N],
-                                              uint8_t Idx)
+  [[clang::always_inline]] constexpr Ref(const uint8_t ByteArrays[][N],
+                                         uint8_t Idx)
       : BaseConstRef<T>(ByteArrays, Idx) {}
 };
 
@@ -78,7 +83,8 @@ public:
   [[clang::always_inline]] constexpr Ref<T> operator[](uint8_t Idx) {
     return {ByteArrays, Idx};
   }
-  [[clang::always_inline]] constexpr ConstRef<T> operator[](uint8_t Idx) const {
+  [[clang::always_inline]] constexpr Ref<const T>
+  operator[](uint8_t Idx) const {
     return {ByteArrays, Idx};
   }
 };
