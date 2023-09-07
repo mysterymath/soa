@@ -37,6 +37,10 @@ struct Test {
   Foo foo;
 };
 
+#define SOA_TYPE Foo
+#define SOA_MEMBERS MEMBER(foo)
+#include <soa-impl.inc>
+
 #define SOA_TYPE Test
 #define SOA_MEMBERS MEMBER(x) MEMBER(foo)
 #include <soa-impl.inc>

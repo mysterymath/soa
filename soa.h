@@ -9,11 +9,11 @@ namespace soa {
 
 template <typename T> struct BaseConstRef {
 protected:
-  uint8_t *BytePtrs[sizeof(T)];
+  const uint8_t *BytePtrs[sizeof(T)];
 
 public:
   template <uint8_t N>
-  [[clang::always_inline]] constexpr BaseConstRef(uint8_t ByteArrays[][N],
+  [[clang::always_inline]] constexpr BaseConstRef(const uint8_t ByteArrays[][N],
                                                   uint8_t Idx) {
 #pragma unroll
     for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
@@ -32,25 +32,37 @@ public:
 };
 
 template <typename T> struct BaseRef : public BaseConstRef<T> {
-  using BaseConstRef<T>::BytePtrs;
-
 public:
   template <uint8_t N>
-  [[clang::always_inline]] constexpr BaseRef(const uint8_t ByteArrays[][N],
+  [[clang::always_inline]] constexpr BaseRef(uint8_t ByteArrays[][N],
                                              uint8_t Idx)
-      : BaseConstRef<T>(const_cast<uint8_t [][N]>(ByteArrays), Idx) {}
+      : BaseConstRef<T>(ByteArrays, Idx) {}
 
   [[clang::always_inline]] BaseRef &operator=(T Val) const {
     uint8_t *Bytes = reinterpret_cast<uint8_t *>(&Val);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
-      *BytePtrs[Idx] = Bytes[Idx];
+      *byte_ptrs()[Idx] = Bytes[Idx];
     return *this;
+  }
+
+  [[clang::always_inline]] uint8_t **byte_ptrs() const {
+    return const_cast<uint8_t **>(BaseConstRef<T>::BytePtrs);
   }
 };
 
-template <typename T> struct Ref : public BaseRef<T> {};
-template <typename T> struct ConstRef : public BaseConstRef<T> {};
+template <typename T> struct Ref : public BaseRef<T> {
+  template <uint8_t N>
+  [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
+      : BaseRef<T>(ByteArrays, Idx) {}
+};
+
+template <typename T> struct ConstRef : public BaseConstRef<T> {
+  template <uint8_t N>
+  [[clang::always_inline]] constexpr ConstRef(const uint8_t ByteArrays[][N],
+                                              uint8_t Idx)
+      : BaseConstRef<T>(ByteArrays, Idx) {}
+};
 
 template <typename T, uint8_t N> class Array {
   uint8_t ByteArrays[sizeof(T)][N];
