@@ -49,7 +49,9 @@ struct Test {
 };
 
 // TODO: Default initialization? = 42 in struct?
-// TODO: It'll need to POD dawg; add a check for that
+// TODO: It'll need to be standard layout dawg; add a check for that
+  // This allows inheritance, but only one class can have data members. We need to find that class..
+  // In that case, the user can just tell us. There's exactly one, and that's where *all* of the members come from, so there's no additional members to specify.
 // TODO: Struct inheritance
 // TODO: Alignment
 // TODO: Volatile
