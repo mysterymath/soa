@@ -42,8 +42,8 @@ public:
                                              uint8_t Idx)
       : BaseConstRef<T>(ByteArrays, Idx) {}
 
-  [[clang::always_inline]] BaseRef &operator=(T Val) const {
-    uint8_t *Bytes = reinterpret_cast<uint8_t *>(&Val);
+  [[clang::always_inline]] BaseRef &operator=(const T& Val) {
+    auto *Bytes = reinterpret_cast<const uint8_t *>(&Val);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       *byte_ptrs()[Idx] = Bytes[Idx];
@@ -58,6 +58,11 @@ struct Ref<T, std::enable_if_t<!std::is_const<T>::value>> : public BaseRef<T> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
       : BaseRef<T>(ByteArrays, Idx) {}
+
+  [[clang::always_inline]] Ref &operator=(const T& Val) {
+    BaseRef<T>::operator=(Val);
+    return *this;
+  }
 };
 
 template <typename T>

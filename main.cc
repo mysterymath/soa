@@ -33,20 +33,21 @@ struct Foo {
 };
 
 struct Test {
-  char x;
+  int x;
   Foo foo;
 };
 
-#define SOA_TYPE Foo
+#define SOA_STRUCT Foo
 #define SOA_MEMBERS MEMBER(foo)
-#include <soa-impl.inc>
+#include <soa-struct.inc>
 
-#define SOA_TYPE Test
+#define SOA_STRUCT Test
 #define SOA_MEMBERS MEMBER(x) MEMBER(foo)
-#include <soa-impl.inc>
+#include <soa-struct.inc>
 
-extern const soa::Array<Test, 100> TestArray;
+extern soa::Array<Test, 100> TestArray;
 
-const char* test() {
-  return TestArray[10].foo.foo;
+void test() {
+  TestArray[10].x = 42;
+  TestArray[10].foo.foo = "Hello";
 }
