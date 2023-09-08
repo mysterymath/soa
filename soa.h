@@ -28,7 +28,7 @@ namespace soa {
 /// the compiler can prove do not recurse.
 template <typename T, uint8_t N> class Array;
 
-/// Reference to an array element.
+/// Pointer to an array element.
 ///
 /// This proxy provides access to the contents of a specific array element. If
 /// the type is arithmetic or a pointer, it can be used in numeric expressions
@@ -38,16 +38,16 @@ template <typename T, uint8_t N> class Array;
 /// written as a whole. A specialization can be generated to allow for member
 /// access using the soa-struct.inc header; see that header for details.
 ///
-/// References should not be stored more than temporarily, and they should not
+/// Pointers should not be stored more than temporarily, and they should not
 /// be used as arguments to functions. This may cause them to acually take on
 /// their logical representation at runtime (an array of pointers, one per
 /// byte), which is typically worse than using a regular C-style array.
-template <typename T, typename Enable = void> struct Ref;
+template <typename T, typename Enable = void> struct Ptr;
 
-/// Base class for references to array elements.
+/// Base class for pointer to array elements.
 ///
 /// Implements the constant part of the interface.
-template <typename T> struct BaseConstRef {
+template <typename T> struct BaseConstPtr {
   static_assert(!std::is_volatile_v<T>, "volatile types are not supported");
   static_assert(std::is_trivial_v<T>, "non-trivial types are unsupported");
   static_assert(std::is_standard_layout_v<T>,
@@ -55,28 +55,21 @@ template <typename T> struct BaseConstRef {
   static_assert(std::alignment_of_v<T> == 1, "aligned types are not supported");
 
 protected:
-  // References to array elements are represented as an array of pointers to
+  // Pointers to array elements are represented as an array of pointers to
   // each byte. This keeps the representation agnostic of the size of the
   // original array.
   const uint8_t *BytePtrs[sizeof(T)];
 
 public:
   template <uint8_t N>
-  [[clang::always_inline]] constexpr BaseConstRef(const uint8_t ByteArrays[][N],
+  [[clang::always_inline]] constexpr BaseConstPtr(const uint8_t ByteArrays[][N],
                                                   uint8_t Idx) {
 #pragma unroll
     for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
       BytePtrs[ByteIdx] = &ByteArrays[ByteIdx][Idx];
   }
 
-  template <uint8_t N>
-  [[clang::always_inline]] constexpr BaseConstRef(const BaseConstRef &Other) {
-#pragma unroll
-    for (uint8_t I = 0; I < sizeof(T); ++I)
-      BytePtrs[I] = Other.BytePtrs[I];
-  }
-
-  /// Return the value of the reference.
+  /// Return the value of the pointer.
   ///
   /// This provides a more readable syntax than casting for contexts where the
   /// implicit conversion to T doesn't trigger, e.g., in printf.
@@ -96,20 +89,20 @@ public:
   }
 };
 
-/// Base class for mutable references to array elements.
-template <typename T> struct BaseRef : public BaseConstRef<T> {
+/// Base class for mutable pointers to array elements.
+template <typename T> struct BasePtr : public BaseConstPtr<T> {
   // Cast away the constness from the base class's byte pointers.
   [[clang::always_inline]] uint8_t **byte_ptrs() const {
-    return const_cast<uint8_t **>(BaseConstRef<T>::BytePtrs);
+    return const_cast<uint8_t **>(BaseConstPtr<T>::BytePtrs);
   }
 
 public:
   template <uint8_t N>
-  [[clang::always_inline]] constexpr BaseRef(uint8_t ByteArrays[][N],
+  [[clang::always_inline]] constexpr BasePtr(uint8_t ByteArrays[][N],
                                              uint8_t Idx)
-      : BaseConstRef<T>(ByteArrays, Idx) {}
+      : BaseConstPtr<T>(ByteArrays, Idx) {}
 
-  [[clang::always_inline]] BaseRef &operator=(const T &Val) {
+  [[clang::always_inline]] BasePtr &operator=(const T &Val) {
     auto *Bytes = reinterpret_cast<const uint8_t *>(&Val);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
@@ -119,30 +112,30 @@ public:
 };
 
 template <typename T>
-struct Ref<T,
+struct Ptr<T,
            std::enable_if_t<!std::is_const_v<T> && !std::is_arithmetic_v<T> &&
-                            !std::is_pointer_v<T>>> : public BaseRef<T> {
+                            !std::is_pointer_v<T>>> : public BasePtr<T> {
   template <uint8_t N>
-  [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
-      : BaseRef<T>(ByteArrays, Idx) {}
+  [[clang::always_inline]] constexpr Ptr(uint8_t ByteArrays[][N], uint8_t Idx)
+      : BasePtr<T>(ByteArrays, Idx) {}
 
-  [[clang::always_inline]] Ref &operator=(const T &Val) {
-    BaseRef<T>::operator=(Val);
+  [[clang::always_inline]] Ptr &operator=(const T &Val) {
+    BasePtr<T>::operator=(Val);
     return *this;
   }
 };
 
 template <typename T>
-struct Ref<T,
+struct Ptr<T,
            std::enable_if_t<!std::is_const_v<T> &&
                             (std::is_arithmetic_v<T> || std::is_pointer_v<T>)>>
-    : public BaseRef<T> {
+    : public BasePtr<T> {
   template <uint8_t N>
-  [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
-      : BaseRef<T>(ByteArrays, Idx) {}
+  [[clang::always_inline]] constexpr Ptr(uint8_t ByteArrays[][N], uint8_t Idx)
+      : BasePtr<T>(ByteArrays, Idx) {}
 
-  [[clang::always_inline]] Ref &operator=(const T &Val) {
-    BaseRef<T>::operator=(Val);
+  [[clang::always_inline]] Ptr &operator=(const T &Val) {
+    BasePtr<T>::operator=(Val);
     return *this;
   }
 
@@ -150,72 +143,72 @@ struct Ref<T,
   // the corresponding operation is defined on T.
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator+=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator+=(const U &Right) {
     *this = *this + Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator-=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator-=(const U &Right) {
     *this = *this - Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator*=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator*=(const U &Right) {
     *this = *this * Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator/=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator/=(const U &Right) {
     *this = *this / Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator%=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator%=(const U &Right) {
     *this = *this % Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator^=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator^=(const U &Right) {
     *this = *this ^ Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator&=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator&=(const U &Right) {
     *this = *this & Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator|=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator|=(const U &Right) {
     *this = *this | Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator<<=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator<<=(const U &Right) {
     *this = *this << Right;
     return *this;
   }
 
   template <typename U>
-  [[clang::always_inline]] Ref &operator>>=(const U &Right) {
+  [[clang::always_inline]] Ptr &operator>>=(const U &Right) {
     *this = *this >> Right;
     return *this;
   }
 
   [[clang::always_inline]] T operator->() const { return *this; }
 
-  template <typename = void> [[clang::always_inline]] Ref &operator++() {
+  template <typename = void> [[clang::always_inline]] Ptr &operator++() {
     *this += 1;
     return *this;
   }
-  template <typename = void> [[clang::always_inline]] Ref &operator--() {
+  template <typename = void> [[clang::always_inline]] Ptr &operator--() {
     *this -= 1;
     return *this;
   }
@@ -234,11 +227,11 @@ struct Ref<T,
 };
 
 template <typename T>
-struct Ref<T, std::enable_if_t<std::is_const_v<T>>> : public BaseConstRef<T> {
+struct Ptr<T, std::enable_if_t<std::is_const_v<T>>> : public BaseConstPtr<T> {
   template <uint8_t N>
-  [[clang::always_inline]] constexpr Ref(const uint8_t ByteArrays[][N],
+  [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][N],
                                          uint8_t Idx)
-      : BaseConstRef<T>(ByteArrays, Idx) {}
+      : BaseConstPtr<T>(ByteArrays, Idx) {}
 };
 
 template <typename T, uint8_t N> class ArrayConstIterator {
@@ -251,7 +244,7 @@ protected:
   ArrayConstIterator(const Array<T, N> &A, uint8_t Idx) : A(A), Idx(Idx) {}
 
 public:
-  [[clang::always_inline]] Ref<const T> operator*() const { return A[Idx]; }
+  [[clang::always_inline]] Ptr<const T> operator*() const { return A[Idx]; }
 
   [[clang::always_inline]] ArrayConstIterator &operator++() {
     ++Idx;
@@ -277,7 +270,7 @@ class ArrayIterator : public ArrayConstIterator<T, N> {
       : ArrayConstIterator<T, N>(A, Idx) {}
 
 public:
-  [[clang::always_inline]] Ref<T> operator*() const {
+  [[clang::always_inline]] Ptr<T> operator*() const {
     return const_cast<soa::Array<T, N> &>(A)[Idx];
   }
 
@@ -309,10 +302,10 @@ public:
     memcpy(ByteArrays, Other.ByteArrays, sizeof(Other.ByteArrays));
   }
 
-  [[clang::always_inline]] constexpr Ref<T> operator[](uint8_t Idx) {
+  [[clang::always_inline]] constexpr Ptr<T> operator[](uint8_t Idx) {
     return {ByteArrays, Idx};
   }
-  [[clang::always_inline]] constexpr Ref<const T>
+  [[clang::always_inline]] constexpr Ptr<const T>
   operator[](uint8_t Idx) const {
     return {ByteArrays, Idx};
   }

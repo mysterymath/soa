@@ -27,6 +27,10 @@ struct Test {
   DerivedFunctor derived_functor;
 };
 
+// TODO: Arrays
+// TODO: Are refs copyable? Can we copy away const?
+// TODO: Ref ptr distinction
+
 #define SOA_STRUCT InnerStruct
 #define SOA_MEMBERS MEMBER(char_ptr)
 #include <soa-struct.inc>
@@ -46,6 +50,9 @@ struct Test {
 extern soa::Array<Test, 100> TestArray;
 
 int test() {
+  soa::Ptr<int> r = TestArray[10].i;
+  soa::Ptr<int> c = r;
+
   TestArray[10].i = 42;
   TestArray[10].i += 42;
   TestArray[10].inner.char_ptr = "Hello";

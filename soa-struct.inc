@@ -1,14 +1,14 @@
-// Including this header defines a specialization of soa::Ref for a structure
+// Including this header defines a specialization of soa::Ptr for a structure
 // type that makes the structure members accessible as their own individual
-// soa::Ref objects. That is, given struct Foo { int a, b; }, soa::Ref<Foo>
-// would have two public members, a, and b, both of type soa::Ref<int>.
+// soa::Ptr objects. That is, given struct Foo { int a, b; }, soa::Ptr<Foo>
+// would have two public members, a, and b, both of type soa::Ptr<int>.
 //
 // To use this, #define SOA_STRUCT to the struct type, and #define SOA_MEMBERS
 // to a space-separated list of the struct member names, each wrapped with
 // MEMBER(). Then, include the header. These preprocessors macros will be
 // automatically undefined by this header.
 //
-// This header must be used before the first use of soa::Ref for the struct
+// This header must be used before the first use of soa::Ptr for the struct
 // type.
 //
 // Example:
@@ -23,15 +23,15 @@
 //   a[5].b = 42;
 
 template <>
-struct soa::Ref<const SOA_STRUCT> : public soa::BaseConstRef<SOA_STRUCT> {
-#define MEMBER(NAME) soa::Ref<const decltype(SOA_STRUCT::NAME)> NAME;
+struct soa::Ptr<const SOA_STRUCT> : public soa::BaseConstPtr<SOA_STRUCT> {
+#define MEMBER(NAME) soa::Ptr<const decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
 #undef MEMBER
 
   template <uint8_t N>
-  [[clang::always_inline]] constexpr Ref(const uint8_t ByteArrays[][N],
+  [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][N],
                                          uint8_t Idx)
-      : BaseConstRef<SOA_STRUCT>(ByteArrays, Idx)
+      : BaseConstPtr<SOA_STRUCT>(ByteArrays, Idx)
 #define MEMBER(NAME) , NAME(ByteArrays + offsetof(SOA_STRUCT, NAME), Idx)
             SOA_MEMBERS
 #undef MEMBER
@@ -39,22 +39,22 @@ struct soa::Ref<const SOA_STRUCT> : public soa::BaseConstRef<SOA_STRUCT> {
   }
 };
 
-template <> struct soa::Ref<SOA_STRUCT> : public soa::BaseRef<SOA_STRUCT> {
-#define MEMBER(NAME) soa::Ref<decltype(SOA_STRUCT::NAME)> NAME;
+template <> struct soa::Ptr<SOA_STRUCT> : public soa::BasePtr<SOA_STRUCT> {
+#define MEMBER(NAME) soa::Ptr<decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
 #undef MEMBER
 
   template <uint8_t N>
-  [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
-      : BaseRef(ByteArrays, Idx)
+  [[clang::always_inline]] constexpr Ptr(uint8_t ByteArrays[][N], uint8_t Idx)
+      : BasePtr(ByteArrays, Idx)
 #define MEMBER(NAME) , NAME(ByteArrays + offsetof(SOA_STRUCT, NAME), Idx)
             SOA_MEMBERS
 #undef MEMBER
   {
   }
 
-  [[clang::always_inline]] Ref &operator=(const SOA_STRUCT &Val) {
-    BaseRef::operator=(Val);
+  [[clang::always_inline]] Ptr &operator=(const SOA_STRUCT &Val) {
+    BasePtr::operator=(Val);
     return *this;
   }
 };
