@@ -53,8 +53,6 @@ struct Test {
   DerivedFunctor derived_functor;
 };
 
-// TODO: Std::forward implementation in SDK
-
 #define SOA_STRUCT InnerStruct
 #define SOA_MEMBERS MEMBER(char_ptr)
 #include <soa-struct.inc>

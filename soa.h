@@ -6,14 +6,6 @@
 #include <type_traits>
 #include <utility>
 
-namespace std {
-template <typename T>              // For lvalues (T is T&),
-T &&forward(T &&param)             // take/return lvalue refs.
-{                                  // For rvalues (T is T),
-  return static_cast<T &&>(param); // take/return rvalue refs.
-}
-} // namespace std
-
 namespace soa {
 
 template <typename T> struct BaseConstRef {
