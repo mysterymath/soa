@@ -45,7 +45,8 @@ public:
     return *reinterpret_cast<const T *>(Bytes);
   }
 
-  template <typename... ArgsT> auto operator()(ArgsT &&...Args) const -> auto {
+  template <typename... ArgsT>
+  [[clang::always_inline]] auto operator()(ArgsT &&...Args) const -> auto {
     return get()(std::forward(Args)...);
   }
 };
@@ -69,7 +70,8 @@ public:
     return *this;
   }
 
-  template <typename... ArgsT> auto operator()(ArgsT &&...Args) -> auto {
+  template <typename... ArgsT>
+  [[clang::always_inline]] auto operator()(ArgsT &&...Args) -> auto {
     return BaseConstRef<T>::get()(std::forward(Args)...);
   }
 };
@@ -77,7 +79,24 @@ public:
 template <typename T, typename Enable = void> struct Ref;
 
 template <typename T>
-struct Ref<T, std::enable_if_t<!std::is_const<T>::value>> : public BaseRef<T> {
+struct Ref<T,
+           std::enable_if_t<!std::is_const_v<T> && !std::is_arithmetic_v<T> &&
+                            !std::is_pointer_v<T>>> : public BaseRef<T> {
+  template <uint8_t N>
+  [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
+      : BaseRef<T>(ByteArrays, Idx) {}
+
+  [[clang::always_inline]] Ref &operator=(const T &Val) {
+    BaseRef<T>::operator=(Val);
+    return *this;
+  }
+};
+
+template <typename T>
+struct Ref<T,
+           std::enable_if_t<!std::is_const_v<T> &&
+                            (std::is_arithmetic_v<T> || std::is_pointer_v<T>)>>
+    : public BaseRef<T> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ref(uint8_t ByteArrays[][N], uint8_t Idx)
       : BaseRef<T>(ByteArrays, Idx) {}
@@ -90,66 +109,144 @@ struct Ref<T, std::enable_if_t<!std::is_const<T>::value>> : public BaseRef<T> {
   // SFINAE means that these following operator overloads only exist if
   // the corresponding operation is defined on T.
 
-  template <typename U> Ref &operator+=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator+=(const U &Right) {
     *this = *this + Right;
     return *this;
   }
 
-  template <typename U> Ref &operator-=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator-=(const U &Right) {
     *this = *this - Right;
     return *this;
   }
 
-  template <typename U> Ref &operator*=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator*=(const U &Right) {
     *this = *this * Right;
     return *this;
   }
 
-  template <typename U> Ref &operator/=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator/=(const U &Right) {
     *this = *this / Right;
     return *this;
   }
 
-  template <typename U> Ref &operator%=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator%=(const U &Right) {
     *this = *this % Right;
     return *this;
   }
 
-  template <typename U> Ref &operator^=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator^=(const U &Right) {
     *this = *this ^ Right;
     return *this;
   }
 
-  template <typename U> Ref &operator&=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator&=(const U &Right) {
     *this = *this & Right;
     return *this;
   }
 
-  template <typename U> Ref &operator|=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator|=(const U &Right) {
     *this = *this | Right;
     return *this;
   }
 
-  template <typename U> Ref &operator<<=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator<<=(const U &Right) {
     *this = *this << Right;
     return *this;
   }
 
-  template <typename U> Ref &operator>>=(const U &Right) {
+  template <typename U>
+  [[clang::always_inline]] Ref &operator>>=(const U &Right) {
     *this = *this >> Right;
     return *this;
   }
 
-  T operator->() const { return *this; }
+  [[clang::always_inline]] T operator->() const { return *this; }
+
+  template <typename = void> [[clang::always_inline]] Ref &operator++() {
+    *this += 1;
+    return *this;
+  }
+  template <typename = void> [[clang::always_inline]] Ref &operator--() {
+    *this -= 1;
+    return *this;
+  }
+
+  template <typename = void> [[clang::always_inline]] T operator++(int) {
+    T old = *this;
+    ++*this;
+    return old;
+  }
+
+  template <typename = void> [[clang::always_inline]] T operator--(int) {
+    T old = *this;
+    --*this;
+    return old;
+  }
 };
 
 template <typename T>
-struct Ref<T, std::enable_if_t<std::is_const<T>::value>>
-    : public BaseConstRef<T> {
+struct Ref<T, std::enable_if_t<std::is_const_v<T>>> : public BaseConstRef<T> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ref(const uint8_t ByteArrays[][N],
                                          uint8_t Idx)
       : BaseConstRef<T>(ByteArrays, Idx) {}
+};
+
+template <typename T, uint8_t N> class Array;
+
+template <typename T, uint8_t N> class ArrayConstIterator {
+  friend class Array<T, N>;
+
+protected:
+  const Array<T, N> &A;
+  uint8_t Idx;
+
+  ArrayConstIterator(const Array<T, N> &A, uint8_t Idx) : A(A), Idx(Idx) {}
+
+public:
+  [[clang::always_inline]] Ref<const T> operator*() const { return A[Idx]; }
+
+  [[clang::always_inline]] ArrayConstIterator &operator++() {
+    ++Idx;
+    return *this;
+  }
+
+  bool operator==(const ArrayConstIterator &Other) const {
+    return &A == &Other.A && Idx == Other.Idx;
+  }
+  bool operator!=(const ArrayConstIterator &Other) const {
+    return !(*this == Other);
+  }
+};
+
+template <typename T, uint8_t N>
+class ArrayIterator : public ArrayConstIterator<T, N> {
+  friend class Array<T, N>;
+
+  using ArrayConstIterator<T, N>::A;
+  using ArrayConstIterator<T, N>::Idx;
+
+  ArrayIterator(Array<T, N> &A, uint8_t Idx)
+      : ArrayConstIterator<T, N>(A, Idx) {}
+
+public:
+  [[clang::always_inline]] Ref<T> operator*() const {
+    return const_cast<soa::Array<T, N> &>(A)[Idx];
+  }
+
+  [[clang::always_inline]] ArrayIterator &operator++() {
+    ArrayConstIterator<T, N>::operator++();
+    return *this;
+  }
 };
 
 template <typename T, uint8_t N> class Array {
@@ -182,7 +279,21 @@ public:
     return {ByteArrays, Idx};
   }
 
-  constexpr uint8_t size() const { return N; }
+  [[clang::always_inline]] constexpr ArrayConstIterator<T, N> begin() const {
+    return {*this, 0};
+  }
+  [[clang::always_inline]] constexpr ArrayConstIterator<T, N> end() const {
+    return {*this, size()};
+  }
+
+  [[clang::always_inline]] constexpr ArrayIterator<T, N> begin() {
+    return {*this, 0};
+  }
+  [[clang::always_inline]] constexpr ArrayIterator<T, N> end() {
+    return {*this, size()};
+  }
+
+  [[clang::always_inline]] constexpr uint8_t size() const { return N; }
 };
 
 template <typename T, uint8_t N> struct Array;

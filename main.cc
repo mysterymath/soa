@@ -53,8 +53,6 @@ struct Test {
   DerivedFunctor derived_functor;
 };
 
-// TODO: See if we can change the ref representation to a base pointer and
-//       stride; that improves the worst case of storing one.
 // TODO: Std::forward implementation in SDK
 
 #define SOA_STRUCT InnerStruct
@@ -87,5 +85,13 @@ int test() {
   TestArray[10].functor = Functor{42};
   TestArray[10].derived_functor.i = 8;
 
-  return TestArray[10].functor() + TestArray[10].derived_functor();
+  for (auto Entry : TestArray)
+    ++Entry.i;
+
+  int sum = 0;
+  const auto &ArrayRef = TestArray;
+  for (const auto &Entry : ArrayRef)
+    sum += Entry.i;
+
+  return sum + TestArray[10].functor() + TestArray[10].derived_functor();
 }
