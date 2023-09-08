@@ -21,12 +21,17 @@ struct DerivedFunctor : public Struct {
   int operator()() const { return i; }
 };
 
+struct OpaqueStruct {
+  int i;
+};
+
 struct Test {
   int i;
   InnerStruct inner;
   Struct *struct_ptr;
   Functor functor;
   DerivedFunctor derived_functor;
+  OpaqueStruct opaque;
 };
 
 // TODO: Arrays
@@ -44,7 +49,7 @@ struct Test {
 #include <soa-struct.inc>
 
 #define SOA_STRUCT Test
-#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor)
+#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor) MEMBER(opaque)
 #include <soa-struct.inc>
 
 // TODO: Arrays
@@ -56,6 +61,8 @@ int test() {
   TestArray[10].i += 42;
   TestArray[10].inner.char_ptr = "Hello";
   TestArray[10].struct_ptr = &s;
+
+  ++TestArray[10].opaque;
 
   (*TestArray[10].struct_ptr).i = 3;
   TestArray[10].struct_ptr->i = 4;

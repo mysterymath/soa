@@ -222,22 +222,22 @@ public:
     return *static_cast<Ptr<T> *>(this);
   }
 
-  template <typename = void> [[clang::always_inline]] Ptr<T> &operator++() {
+  [[clang::always_inline]] Ptr<T> &operator++() {
     *this += 1;
     return *static_cast<Ptr<T> *>(this);
   }
-  template <typename = void> [[clang::always_inline]] Ptr<T> &operator--() {
+  [[clang::always_inline]] Ptr<T> &operator--() {
     *this -= 1;
     return *static_cast<Ptr<T> *>(this);
   }
 
-  template <typename = void> [[clang::always_inline]] T operator++(int) {
+  [[clang::always_inline]] T operator++(int) {
     T old = *this;
     ++*this;
     return *static_cast<Ptr<T> *>(this);
   }
 
-  template <typename = void> [[clang::always_inline]] T operator--(int) {
+  [[clang::always_inline]] T operator--(int) {
     T old = *this;
     --*this;
     return *static_cast<Ptr<T> *>(this);
