@@ -13,6 +13,8 @@ struct Struct {
 struct Functor {
   int x;
   int operator()() const { return x; }
+  int dbl() const { return x + x; }
+  int dbl_mut() { return x += x; }
 };
 
 struct DerivedFunctor : public Struct {
@@ -28,8 +30,6 @@ struct Test {
 };
 
 // TODO: Arrays
-// TODO: Are refs copyable? Can we copy away const?
-// TODO: Ref ptr distinction
 
 #define SOA_STRUCT InnerStruct
 #define SOA_MEMBERS MEMBER(char_ptr)
@@ -52,9 +52,6 @@ struct Test {
 extern soa::Array<Test, 100> TestArray;
 
 int test() {
-  soa::Ptr<int> r = TestArray[10].i;
-  soa::Ptr<int> c = r;
-
   TestArray[10].i = 42;
   TestArray[10].i += 42;
   TestArray[10].inner.char_ptr = "Hello";
@@ -64,6 +61,8 @@ int test() {
   TestArray[10].struct_ptr->i = 4;
 
   TestArray[10].functor = Functor{42};
+  TestArray[10].functor->dbl();
+  TestArray[10].functor->dbl_mut();
   TestArray[10].derived_functor.i = 8;
 
   for (auto Entry : TestArray)

@@ -23,8 +23,7 @@
 //   a[5].b = 42;
 
 template <>
-class soa::Ptr<const SOA_STRUCT>
-    : public soa::BasePtr<const SOA_STRUCT, soa::Ptr<const SOA_STRUCT>> {
+class soa::Ptr<const SOA_STRUCT> : public soa::BasePtr<const SOA_STRUCT> {
 public:
 #define MEMBER(NAME) soa::Ptr<const decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
@@ -40,12 +39,10 @@ public:
   {
   }
 
-  using BasePtr<const SOA_STRUCT, soa::Ptr<const SOA_STRUCT>>::operator=;
+  using BasePtr<const SOA_STRUCT>::operator=;
 };
 
-template <>
-class soa::Ptr<SOA_STRUCT>
-    : public soa::BasePtr<SOA_STRUCT, soa::Ptr<SOA_STRUCT>> {
+template <> class soa::Ptr<SOA_STRUCT> : public soa::BasePtr<SOA_STRUCT> {
 public:
 #define MEMBER(NAME) soa::Ptr<decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
@@ -60,7 +57,7 @@ public:
   {
   }
 
-  using BasePtr<SOA_STRUCT, soa::Ptr<SOA_STRUCT>>::operator=;
+  using BasePtr<SOA_STRUCT>::operator=;
 };
 
 #undef SOA_STRUCT
