@@ -92,7 +92,7 @@ public:
 
   template <typename... ArgsT>
   [[clang::always_inline]] auto operator()(ArgsT &&...Args) const -> auto {
-    return get()(std::forward(Args)...);
+    return static_cast<const T>(get())(std::forward(Args)...);
   }
 };
 
@@ -115,11 +115,6 @@ public:
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       *byte_ptrs()[Idx] = Bytes[Idx];
     return *this;
-  }
-
-  template <typename... ArgsT>
-  [[clang::always_inline]] auto operator()(ArgsT &&...Args) -> auto {
-    return BaseConstRef<T>::get()(std::forward(Args)...);
   }
 };
 
