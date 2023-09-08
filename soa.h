@@ -169,6 +169,11 @@ public:
       (*this)[Idx++] = Entry;
   }
 
+  template <uint8_t M>
+  [[clang::always_inline]] constexpr Array(const Array<T, M> &Other) {
+    memcpy(ByteArrays, Other.ByteArrays, sizeof(Other.ByteArrays));
+  }
+
   [[clang::always_inline]] constexpr Ref<T> operator[](uint8_t Idx) {
     return {ByteArrays, Idx};
   }
@@ -176,6 +181,8 @@ public:
   operator[](uint8_t Idx) const {
     return {ByteArrays, Idx};
   }
+
+  constexpr uint8_t size() const { return N; }
 };
 
 template <typename T, uint8_t N> struct Array;
