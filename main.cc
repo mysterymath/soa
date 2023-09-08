@@ -41,20 +41,18 @@ struct Functor {
   int operator()() const { return x; }
 };
 
+struct DerivedFunctor : public Struct {
+  int operator()() const { return i; }
+};
+
 struct Test {
   int i;
   InnerStruct inner;
   Struct *struct_ptr;
   Functor functor;
+  DerivedFunctor derived_functor;
 };
 
-// TODO: Default initialization? = 42 in struct?
-// TODO: It'll need to be standard layout dawg; add a check for that
-  // This allows inheritance, but only one class can have data members. We need to find that class..
-  // In that case, the user can just tell us. There's exactly one, and that's where *all* of the members come from, so there's no additional members to specify.
-// TODO: Struct inheritance
-// TODO: Alignment
-// TODO: Volatile
 // TODO: See if we can change the ref representation to a base pointer and
 //       stride; that improves the worst case of storing one.
 // TODO: Std::forward implementation in SDK
@@ -63,8 +61,16 @@ struct Test {
 #define SOA_MEMBERS MEMBER(char_ptr)
 #include <soa-struct.inc>
 
+#define SOA_STRUCT Functor
+#define SOA_MEMBERS MEMBER(x)
+#include <soa-struct.inc>
+
+#define SOA_STRUCT DerivedFunctor
+#define SOA_MEMBERS MEMBER(i)
+#include <soa-struct.inc>
+
 #define SOA_STRUCT Test
-#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor)
+#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor)
 #include <soa-struct.inc>
 
 extern soa::Array<Test, 100> TestArray;
@@ -78,5 +84,8 @@ int test() {
   (*TestArray[10].struct_ptr).i = 3;
   TestArray[10].struct_ptr->i = 4;
 
-  return TestArray[10].functor();
+  TestArray[10].functor = Functor{42};
+  TestArray[10].derived_functor.i = 8;
+
+  return TestArray[10].functor() + TestArray[10].derived_functor();
 }

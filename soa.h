@@ -17,6 +17,12 @@ T &&forward(T &&param)             // take/return lvalue refs.
 namespace soa {
 
 template <typename T> struct BaseConstRef {
+  static_assert(!std::is_volatile_v<T>, "volatile types are not supported");
+  static_assert(std::is_trivial_v<T>, "non-trivial types are unsupported");
+  static_assert(std::is_standard_layout_v<T>,
+                "non-standard layout types are unsupported");
+  static_assert(std::alignment_of_v<T> == 1, "aligned types are not supported");
+
 protected:
   const uint8_t *BytePtrs[sizeof(T)];
 
@@ -147,6 +153,12 @@ struct Ref<T, std::enable_if_t<std::is_const<T>::value>>
 };
 
 template <typename T, uint8_t N> class Array {
+  static_assert(!std::is_volatile_v<T>, "volatile types are not supported");
+  static_assert(std::is_trivial_v<T>, "non-trivial types are unsupported");
+  static_assert(std::is_standard_layout_v<T>,
+                "only standard layout types are supported");
+  static_assert(std::alignment_of_v<T> == 1, "aligned types are not supported");
+
   uint8_t ByteArrays[sizeof(T)][N];
 
 public:
