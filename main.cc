@@ -47,6 +47,8 @@ struct Test {
 #define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor)
 #include <soa-struct.inc>
 
+// TODO: Arrays
+
 extern soa::Array<Test, 100> TestArray;
 
 int test() {

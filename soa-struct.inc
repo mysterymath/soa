@@ -23,7 +23,9 @@
 //   a[5].b = 42;
 
 template <>
-struct soa::Ptr<const SOA_STRUCT> : public soa::BasePtr<const SOA_STRUCT> {
+class soa::Ptr<const SOA_STRUCT>
+    : public soa::BasePtr<const SOA_STRUCT, soa::Ptr<const SOA_STRUCT>> {
+public:
 #define MEMBER(NAME) soa::Ptr<const decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
 #undef MEMBER
@@ -31,15 +33,20 @@ struct soa::Ptr<const SOA_STRUCT> : public soa::BasePtr<const SOA_STRUCT> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][N],
                                          uint8_t Idx)
-      : BasePtr<const SOA_STRUCT>(ByteArrays, Idx)
+      : BasePtr(ByteArrays, Idx)
 #define MEMBER(NAME) , NAME(ByteArrays + offsetof(SOA_STRUCT, NAME), Idx)
             SOA_MEMBERS
 #undef MEMBER
   {
   }
+
+  using BasePtr<const SOA_STRUCT, soa::Ptr<const SOA_STRUCT>>::operator=;
 };
 
-template <> struct soa::Ptr<SOA_STRUCT> : public soa::BasePtr<SOA_STRUCT> {
+template <>
+class soa::Ptr<SOA_STRUCT>
+    : public soa::BasePtr<SOA_STRUCT, soa::Ptr<SOA_STRUCT>> {
+public:
 #define MEMBER(NAME) soa::Ptr<decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
 #undef MEMBER
@@ -53,10 +60,7 @@ template <> struct soa::Ptr<SOA_STRUCT> : public soa::BasePtr<SOA_STRUCT> {
   {
   }
 
-  [[clang::always_inline]] Ptr &operator=(const SOA_STRUCT &Val) {
-    BasePtr::operator=(Val);
-    return *this;
-  }
+  using BasePtr<SOA_STRUCT, soa::Ptr<SOA_STRUCT>>::operator=;
 };
 
 #undef SOA_STRUCT

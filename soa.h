@@ -42,10 +42,10 @@ template <typename T, uint8_t N> class Array;
 /// be used as arguments to functions. This may cause them to acually take on
 /// their logical representation at runtime (an array of pointers, one per
 /// byte), which is typically worse than using a regular C-style array.
-template <typename T, typename Enable = void> struct Ptr;
+template <typename T> struct Ptr;
 
 /// Base class for pointer to array elements.
-template <typename T> struct BasePtr {
+template <typename T, typename Derived> class BasePtr {
   static_assert(!std::is_volatile_v<T>, "volatile types are not supported");
   static_assert(std::is_trivial_v<T>, "non-trivial types are unsupported");
   static_assert(std::is_standard_layout_v<T>,
@@ -95,137 +95,106 @@ public:
   }
 
   template <typename Q = T>
-  [[clang::always_inline]] std::enable_if_t<!std::is_const_v<Q>, BasePtr &>
+  [[clang::always_inline]] std::enable_if_t<!std::is_const_v<Q>,
+                                            const Derived &>
   operator=(const T &Val) {
     auto *Bytes = reinterpret_cast<const uint8_t *>(&Val);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
       *const_cast<uint8_t *>(BytePtrs[Idx]) = Bytes[Idx];
-    return *this;
-  }
-};
-
-template <typename T>
-struct Ptr<T,
-           std::enable_if_t<!std::is_const_v<T> && !std::is_arithmetic_v<T> &&
-                            !std::is_pointer_v<T>>> : public BasePtr<T> {
-  template <uint8_t N>
-  [[clang::always_inline]] constexpr Ptr(uint8_t ByteArrays[][N], uint8_t Idx)
-      : BasePtr<T>(ByteArrays, Idx) {}
-
-  [[clang::always_inline]] Ptr &operator=(const T &Val) {
-    BasePtr<T>::operator=(Val);
-    return *this;
-  }
-};
-
-template <typename T>
-struct Ptr<T,
-           std::enable_if_t<!std::is_const_v<T> &&
-                            (std::is_arithmetic_v<T> || std::is_pointer_v<T>)>>
-    : public BasePtr<T> {
-  template <uint8_t N>
-  [[clang::always_inline]] constexpr Ptr(uint8_t ByteArrays[][N], uint8_t Idx)
-      : BasePtr<T>(ByteArrays, Idx) {}
-
-  [[clang::always_inline]] Ptr &operator=(const T &Val) {
-    BasePtr<T>::operator=(Val);
-    return *this;
-  }
-
-  // SFINAE means that these following operator overloads only exist if
-  // the corresponding operation is defined on T.
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator+=(const U &Right) {
-    *this = *this + Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator-=(const U &Right) {
-    *this = *this - Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator*=(const U &Right) {
-    *this = *this * Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator/=(const U &Right) {
-    *this = *this / Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator%=(const U &Right) {
-    *this = *this % Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator^=(const U &Right) {
-    *this = *this ^ Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator&=(const U &Right) {
-    *this = *this & Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator|=(const U &Right) {
-    *this = *this | Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator<<=(const U &Right) {
-    *this = *this << Right;
-    return *this;
-  }
-
-  template <typename U>
-  [[clang::always_inline]] Ptr &operator>>=(const U &Right) {
-    *this = *this >> Right;
-    return *this;
+    return *static_cast<Derived *>(this);
   }
 
   [[clang::always_inline]] T operator->() const { return *this; }
 
-  template <typename = void> [[clang::always_inline]] Ptr &operator++() {
-    *this += 1;
-    return *this;
+  template <typename U>
+  [[clang::always_inline]] Derived &operator+=(const U &Right) {
+    *this = *this + Right;
+    return *static_cast<Derived *>(this);
   }
-  template <typename = void> [[clang::always_inline]] Ptr &operator--() {
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator-=(const U &Right) {
+    *this = *this - Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator*=(const U &Right) {
+    *this = *this * Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator/=(const U &Right) {
+    *this = *this / Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator%=(const U &Right) {
+    *this = *this % Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator^=(const U &Right) {
+    *this = *this ^ Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator&=(const U &Right) {
+    *this = *this & Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator|=(const U &Right) {
+    *this = *this | Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator<<=(const U &Right) {
+    *this = *this << Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename U>
+  [[clang::always_inline]] Derived &operator>>=(const U &Right) {
+    *this = *this >> Right;
+    return *static_cast<Derived *>(this);
+  }
+
+  template <typename = void>
+  [[clang::always_inline]] Derived &operator++() {
+    *this += 1;
+    return *static_cast<Derived *>(this);
+  }
+  template <typename = void>
+  [[clang::always_inline]] Derived &operator--() {
     *this -= 1;
-    return *this;
+    return *static_cast<Derived *>(this);
   }
 
   template <typename = void> [[clang::always_inline]] T operator++(int) {
     T old = *this;
     ++*this;
-    return old;
+    return *static_cast<Derived *>(this);
   }
 
   template <typename = void> [[clang::always_inline]] T operator--(int) {
     T old = *this;
     --*this;
-    return old;
+    return *static_cast<Derived *>(this);
   }
 };
 
-template <typename T>
-struct Ptr<T, std::enable_if_t<std::is_const_v<T>>> : public BasePtr<T> {
-  template <uint8_t N>
-  [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][N],
-                                         uint8_t Idx)
-      : BasePtr<T>(ByteArrays, Idx) {}
+template <typename T> class Ptr : public BasePtr<T, Ptr<T>> {
+public:
+  using BasePtr<T, Ptr<T>>::BasePtr;
+  using BasePtr<T, Ptr<T>>::operator=;
 };
 
 template <typename T, uint8_t N> class ArrayConstIterator {
