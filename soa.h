@@ -45,9 +45,7 @@ template <typename T, uint8_t N> class Array;
 template <typename T, typename Enable = void> struct Ptr;
 
 /// Base class for pointer to array elements.
-///
-/// Implements the constant part of the interface.
-template <typename T> struct BaseConstPtr {
+template <typename T> struct BasePtr {
   static_assert(!std::is_volatile_v<T>, "volatile types are not supported");
   static_assert(std::is_trivial_v<T>, "non-trivial types are unsupported");
   static_assert(std::is_standard_layout_v<T>,
@@ -62,8 +60,16 @@ protected:
 
 public:
   template <uint8_t N>
-  [[clang::always_inline]] constexpr BaseConstPtr(const uint8_t ByteArrays[][N],
-                                                  uint8_t Idx) {
+  [[clang::always_inline]] constexpr BasePtr(const uint8_t ByteArrays[][N],
+                                             uint8_t Idx) {
+#pragma unroll
+    for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
+      BytePtrs[ByteIdx] = &ByteArrays[ByteIdx][Idx];
+  }
+
+  template <uint8_t N>
+  [[clang::always_inline]] constexpr BasePtr(uint8_t ByteArrays[][N],
+                                             uint8_t Idx) {
 #pragma unroll
     for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
       BytePtrs[ByteIdx] = &ByteArrays[ByteIdx][Idx];
@@ -87,26 +93,14 @@ public:
   [[clang::always_inline]] auto operator()(ArgsT &&...Args) const -> auto {
     return static_cast<const T>(get())(std::forward(Args)...);
   }
-};
 
-/// Base class for mutable pointers to array elements.
-template <typename T> struct BasePtr : public BaseConstPtr<T> {
-  // Cast away the constness from the base class's byte pointers.
-  [[clang::always_inline]] uint8_t **byte_ptrs() const {
-    return const_cast<uint8_t **>(BaseConstPtr<T>::BytePtrs);
-  }
-
-public:
-  template <uint8_t N>
-  [[clang::always_inline]] constexpr BasePtr(uint8_t ByteArrays[][N],
-                                             uint8_t Idx)
-      : BaseConstPtr<T>(ByteArrays, Idx) {}
-
-  [[clang::always_inline]] BasePtr &operator=(const T &Val) {
+  template <typename Q = T>
+  [[clang::always_inline]] std::enable_if_t<!std::is_const_v<Q>, BasePtr &>
+  operator=(const T &Val) {
     auto *Bytes = reinterpret_cast<const uint8_t *>(&Val);
 #pragma unroll
     for (uint8_t Idx = 0; Idx < sizeof(T); ++Idx)
-      *byte_ptrs()[Idx] = Bytes[Idx];
+      *const_cast<uint8_t *>(BytePtrs[Idx]) = Bytes[Idx];
     return *this;
   }
 };
@@ -227,11 +221,11 @@ struct Ptr<T,
 };
 
 template <typename T>
-struct Ptr<T, std::enable_if_t<std::is_const_v<T>>> : public BaseConstPtr<T> {
+struct Ptr<T, std::enable_if_t<std::is_const_v<T>>> : public BasePtr<T> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][N],
                                          uint8_t Idx)
-      : BaseConstPtr<T>(ByteArrays, Idx) {}
+      : BasePtr<T>(ByteArrays, Idx) {}
 };
 
 template <typename T, uint8_t N> class ArrayConstIterator {

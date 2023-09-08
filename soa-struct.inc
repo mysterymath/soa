@@ -23,7 +23,7 @@
 //   a[5].b = 42;
 
 template <>
-struct soa::Ptr<const SOA_STRUCT> : public soa::BaseConstPtr<SOA_STRUCT> {
+struct soa::Ptr<const SOA_STRUCT> : public soa::BasePtr<const SOA_STRUCT> {
 #define MEMBER(NAME) soa::Ptr<const decltype(SOA_STRUCT::NAME)> NAME;
   SOA_MEMBERS
 #undef MEMBER
@@ -31,7 +31,7 @@ struct soa::Ptr<const SOA_STRUCT> : public soa::BaseConstPtr<SOA_STRUCT> {
   template <uint8_t N>
   [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][N],
                                          uint8_t Idx)
-      : BaseConstPtr<SOA_STRUCT>(ByteArrays, Idx)
+      : BasePtr<const SOA_STRUCT>(ByteArrays, Idx)
 #define MEMBER(NAME) , NAME(ByteArrays + offsetof(SOA_STRUCT, NAME), Idx)
             SOA_MEMBERS
 #undef MEMBER
