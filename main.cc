@@ -66,7 +66,6 @@ int test() {
 
   TestArray[10].functor = Functor{42};
   TestArray[10].functor->dbl();
-  TestArray[10].functor->dbl_mut();
   TestArray[10].derived_functor.i = 8;
   TestArray[10].array[1] = 42;
   TestArray[10].array[2] = 43;

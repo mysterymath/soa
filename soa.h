@@ -142,29 +142,6 @@ public:
     return *static_cast<Ptr<T> *>(this);
   }
 
-  class MutableWrapper {
-    T V;
-    Ptr<T> &P;
-
-  public:
-    [[clang::always_inline]] MutableWrapper(Ptr<T> &P) : V(P), P(P) {}
-    [[clang::always_inline]] MutableWrapper(const MutableWrapper &Other) =
-        delete;
-    [[clang::always_inline]] MutableWrapper &
-    operator=(const MutableWrapper &Other) = delete;
-
-    [[clang::always_inline]] ~MutableWrapper() { P = V; }
-
-    [[clang::always_inline]] T *operator->() { return &V; }
-  };
-
-  template <typename Q = T>
-  [[clang::always_inline]] std::enable_if_t<
-      !std::is_pointer_v<Q> && !std::is_const_v<Q>, MutableWrapper>
-  operator->() {
-    return *static_cast<Ptr<T> *>(this);
-  }
-
   template <typename U>
   [[clang::always_inline]] Ptr<T> &operator+=(const U &Right) {
     *this = *this + Right;
