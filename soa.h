@@ -356,8 +356,6 @@ public:
   [[clang::always_inline]] constexpr uint8_t size() const { return N; }
 };
 
-template <typename T, uint8_t N> struct Array;
-
 } // namespace soa
 
 #endif // _SOA_H
