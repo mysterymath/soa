@@ -139,7 +139,7 @@ public:
   template <typename Q = T>
   [[clang::always_inline]] std::enable_if_t<!std::is_pointer_v<Q>, ConstWrapper>
   operator->() const {
-    return *static_cast<Ptr<T> *>(this);
+    return *static_cast<const Ptr<T> *>(this);
   }
 
   template <typename U>
