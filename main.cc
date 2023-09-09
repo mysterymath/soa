@@ -25,14 +25,15 @@ struct OpaqueStruct {
   int i;
 };
 
-struct Test {
+struct Element {
+  char c;
   int i;
-  InnerStruct inner;
+  Struct s;
+  int array[3];
   Struct *struct_ptr;
   Functor functor;
   DerivedFunctor derived_functor;
   OpaqueStruct opaque;
-  int array[3];
 };
 
 #define SOA_STRUCT InnerStruct
@@ -47,37 +48,58 @@ struct Test {
 #define SOA_MEMBERS MEMBER(i)
 #include <soa-struct.inc>
 
-#define SOA_STRUCT Test
-#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor) MEMBER(opaque) MEMBER(array)
+#define SOA_STRUCT Element
+#define SOA_MEMBERS                                                            \
+  MEMBER(c)                                                                    \
+  MEMBER(i)                                                                    \
+  MEMBER(s)                                                                    \
+  MEMBER(struct_ptr)                                                           \
+  MEMBER(functor)                                                              \
+  MEMBER(derived_functor)                                                      \
+  MEMBER(opaque)                                                               \
+  MEMBER(array)
 #include <soa-struct.inc>
 
 // TODO: Arrays
 
-extern soa::Array<Test, 100> TestArray;
+extern soa::Array<Element, 100> A;
 
-int test() {
-  TestArray[10].i = 42;
-  TestArray[10].i += 42;
-  TestArray[10].inner.char_ptr = "Hello";
-  TestArray[10].struct_ptr = &s;
+template <typename T> T opaque() { return *(T *)(0x1234); }
 
-  (*TestArray[10].struct_ptr).i = 3;
-  TestArray[10].struct_ptr->i = 4;
+int main() {
+  A[0].c = 0;
+  printf("%d\n", A[0].c.get());
 
-  TestArray[10].functor = Functor{42};
-  TestArray[10].functor->dbl();
-  TestArray[10].derived_functor.i = 8;
-  TestArray[10].array[1] = 42;
-  TestArray[10].array[2] = 43;
-  TestArray[11].array[1] = 44;
+  A[1].c = 1;
+  printf("%d\n", A[1].c.get());
 
-  for (auto Entry : TestArray)
-    ++Entry.i;
+  A[0].i = 1234;
+  printf("%d\n", A[0].i.get());
 
-  int sum = 0;
-  const auto &ArrayRef = TestArray;
-  for (const auto &Entry : ArrayRef)
-    sum += Entry.i;
+  A[1].i = 4321;
+  printf("%d\n", A[1].i.get());
+  /*
+    TestArray[10].i += 42;
+    TestArray[10].inner.char_ptr = "Hello";
+    TestArray[10].struct_ptr = &s;
 
-  return sum + TestArray[10].functor() + TestArray[10].derived_functor();
+    (*TestArray[10].struct_ptr).i = 3;
+    TestArray[10].struct_ptr->i = 4;
+
+    TestArray[10].functor = Functor{42};
+    TestArray[10].functor->dbl();
+    TestArray[10].derived_functor.i = 8;
+    TestArray[10].array[1] = 42;
+    TestArray[10].array[2] = 43;
+    TestArray[11].array[1] = 44;
+
+    for (auto Entry : TestArray)
+      ++Entry.i;
+
+    int sum = 0;
+    const auto &ArrayRef = TestArray;
+    for (const auto &Entry : ArrayRef)
+      sum += Entry.i;
+  */
+  return 0;
 }
