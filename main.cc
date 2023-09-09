@@ -32,9 +32,8 @@ struct Test {
   Functor functor;
   DerivedFunctor derived_functor;
   OpaqueStruct opaque;
+  int array[3];
 };
-
-// TODO: Arrays
 
 #define SOA_STRUCT InnerStruct
 #define SOA_MEMBERS MEMBER(char_ptr)
@@ -49,7 +48,7 @@ struct Test {
 #include <soa-struct.inc>
 
 #define SOA_STRUCT Test
-#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor) MEMBER(opaque)
+#define SOA_MEMBERS MEMBER(i) MEMBER(inner) MEMBER(struct_ptr) MEMBER(functor) MEMBER(derived_functor) MEMBER(opaque) MEMBER(array)
 #include <soa-struct.inc>
 
 // TODO: Arrays
@@ -62,8 +61,6 @@ int test() {
   TestArray[10].inner.char_ptr = "Hello";
   TestArray[10].struct_ptr = &s;
 
-  ++TestArray[10].opaque;
-
   (*TestArray[10].struct_ptr).i = 3;
   TestArray[10].struct_ptr->i = 4;
 
@@ -71,6 +68,9 @@ int test() {
   TestArray[10].functor->dbl();
   TestArray[10].functor->dbl_mut();
   TestArray[10].derived_functor.i = 8;
+  TestArray[10].array[1] = 42;
+  TestArray[10].array[2] = 43;
+  TestArray[11].array[1] = 44;
 
   for (auto Entry : TestArray)
     ++Entry.i;

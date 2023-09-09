@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <initializer_list>
+#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -130,7 +131,7 @@ private:
     const T V;
 
   public:
-    ConstWrapper(const Ptr<T> &P) : V(P) {}
+    [[clang::always_inline]] ConstWrapper(const Ptr<T> &P) : V(P) {}
     [[clang::always_inline]] const T *operator->() const { return &V; }
   };
 
@@ -146,11 +147,13 @@ public:
     Ptr<T> &P;
 
   public:
-    MutableWrapper(Ptr<T> &P) : V(P), P(P) {}
-    MutableWrapper(const MutableWrapper &Other) = delete;
-    MutableWrapper &operator=(const MutableWrapper &Other) = delete;
+    [[clang::always_inline]] MutableWrapper(Ptr<T> &P) : V(P), P(P) {}
+    [[clang::always_inline]] MutableWrapper(const MutableWrapper &Other) =
+        delete;
+    [[clang::always_inline]] MutableWrapper &
+    operator=(const MutableWrapper &Other) = delete;
 
-    ~MutableWrapper() { P = V; }
+    [[clang::always_inline]] ~MutableWrapper() { P = V; }
 
     [[clang::always_inline]] T *operator->() { return &V; }
   };
@@ -250,6 +253,38 @@ public:
   using BasePtr<T>::operator=;
 };
 
+template <typename T, uint8_t N> class Ptr<T[N]> {
+  static_assert(!std::is_volatile_v<T>, "volatile types are not supported");
+  static_assert(std::is_trivial_v<T>, "non-trivial types are unsupported");
+  static_assert(std::is_standard_layout_v<T>,
+                "non-standard layout types are unsupported");
+  static_assert(std::alignment_of_v<T> == 1, "aligned types are not supported");
+
+  uint8_t PtrStorage[sizeof(Ptr<T>[N])];
+  [[clang::always_inline]] Ptr<T> *ptrs() {
+    return reinterpret_cast<Ptr<T> *>(PtrStorage);
+  }
+
+public:
+  template <uint8_t M>
+  [[clang::always_inline]] constexpr Ptr(const uint8_t ByteArrays[][M],
+                                         uint8_t Idx) {
+#pragma unroll
+    for (uint8_t ArrayIdx = 0; ArrayIdx < N; ++ArrayIdx)
+      new (&ptrs()[ArrayIdx]) Ptr<T>(ByteArrays + ArrayIdx * sizeof(T), Idx);
+  }
+
+  template <uint8_t M>
+  [[clang::always_inline]] constexpr Ptr(uint8_t ByteArrays[][M], uint8_t Idx) {
+#pragma unroll
+    for (uint8_t ArrayIdx = 0; ArrayIdx < N; ++ArrayIdx)
+      new (&ptrs()[ArrayIdx]) Ptr<T>(ByteArrays + ArrayIdx * sizeof(T), Idx);
+  }
+
+  Ptr<const T> operator[](uint8_t Idx) const { return ptrs()[Idx]; }
+  Ptr<T> operator[](uint8_t Idx) { return ptrs()[Idx]; }
+};
+
 template <typename T, uint8_t N> class ArrayConstIterator {
   friend class Array<T, N>;
 
@@ -257,7 +292,8 @@ protected:
   const Array<T, N> &A;
   uint8_t Idx;
 
-  ArrayConstIterator(const Array<T, N> &A, uint8_t Idx) : A(A), Idx(Idx) {}
+  [[clang::always_inline]] ArrayConstIterator(const Array<T, N> &A, uint8_t Idx)
+      : A(A), Idx(Idx) {}
 
 public:
   [[clang::always_inline]] Ptr<const T> operator*() const { return A[Idx]; }
@@ -282,7 +318,7 @@ class ArrayIterator : public ArrayConstIterator<T, N> {
   using ArrayConstIterator<T, N>::A;
   using ArrayConstIterator<T, N>::Idx;
 
-  ArrayIterator(Array<T, N> &A, uint8_t Idx)
+  [[clang::always_inline]] ArrayIterator(Array<T, N> &A, uint8_t Idx)
       : ArrayConstIterator<T, N>(A, Idx) {}
 
 public:
