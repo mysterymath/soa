@@ -60,11 +60,7 @@ struct Element {
   MEMBER(array)
 #include <soa-struct.inc>
 
-// TODO: Arrays
-
 extern soa::Array<Element, 100> A;
-
-template <typename T> T opaque() { return *(T *)(0x1234); }
 
 int main() {
   A[0].c = 0;
