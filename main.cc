@@ -2,6 +2,7 @@
 #include <soa.h>
 #include <string.h>
 
+#if 0
 struct Struct {
   char c;
 } s;
@@ -67,10 +68,41 @@ struct Element {
 #include <soa-struct.inc>
 
 extern soa::Array<Element, 100> A;
+#endif
 
 int main() {
-  // TODO: Name these examples.
-  // TODO: Get rid of all but one of the gets.
+  static soa::Array<char, 10> CharArray;
+
+  // SoA array elements can be assigned to.
+  CharArray[0] = 1;
+
+  // An element is a wrapper type, soa::Ptr<T>, that can implicitly be coerced
+  // to the wrapped type, T.
+  char v = CharArray[0];
+  printf("%d\n", v);
+  printf("%d\n", CharArray[0] + 42);
+
+  // When applicable, mutation operations are defined on the wrapper type in
+  // terms of binary operations. For example, the following:
+  CharArray[0] += 42;
+  // Lowers to CharArray[0] = CharArray[0] + 42
+  printf("%d\n", CharArray[0].get());
+
+  // Using them in contexts where implicit coercion doesn't occur (e.g. printf)
+  // requires .get()
+  printf("%d\n", CharArray[0].get());
+
+  // Multi-byte types are stored strided by byte, i.e., the below type has all
+  // 10 of the low bytes followed by all 10 of the high bytes. This is true for
+  // any element type; the bytes are treated totally agnostically of what they
+  // contain.
+  static soa::Array<int, 10> IntArray;
+  // The low byte will be at IntArray+1, and the high byte will be at
+  // IntArray+11.
+  IntArray[1] = 0x1234;
+  printf("%x\n", IntArray[1].get());
+
+#if 0
   A[0].c = 0;
   printf("%d\n", A[0].c.get());
 
@@ -115,5 +147,6 @@ int main() {
     for (const auto &Entry : ArrayRef)
       sum += Entry.i;
   */
+#endif
   return 0;
 }
