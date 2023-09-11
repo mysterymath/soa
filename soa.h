@@ -102,7 +102,7 @@ public:
 
   template <typename... ArgsT>
   [[clang::always_inline]] auto operator()(ArgsT &&...Args) const -> auto {
-    return static_cast<const T>(get())(std::forward(Args)...);
+    return static_cast<const T>(get())(std::forward<ArgsT>(Args)...);
   }
 
   template <typename Q = T>

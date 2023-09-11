@@ -102,6 +102,39 @@ int main() {
   IntArray[1] = 0x1234;
   printf("%x\n", IntArray[1].get());
 
+  // Both indirection and the arrow operator are supported for pointer elements;
+  // using these on the wrapper type forwards to the wrapped type.
+  struct Struct {
+    char c;
+  } s = {42};
+  static soa::Array<Struct *, 10> PtrArray;
+  PtrArray[0] = &s;
+  printf("%d\n", (*PtrArray[0]).c);
+  printf("%d\n", PtrArray[0]->c);
+
+  // For non-pointer types, the arrow operator produces a copy of the wrapped
+  // element; this allows calling const methods on the type. Note that this
+  // produces a copy; the this pointer may be different on each invocation.
+  struct MemberFunctions {
+    const MemberFunctions *whoami() const { return this; }
+    char c() const { return 44; }
+  };
+  static soa::Array<MemberFunctions, 10> MemberFunctionsArray;
+  printf("%p\n", MemberFunctionsArray[0]->whoami());
+  printf("%p\n", MemberFunctionsArray[0]->whoami());
+  printf("%d\n", MemberFunctionsArray[0]->c());
+
+  // Call operators are forwarded to functors.
+  struct Functor {
+    char operator()(char x) const { return x; }
+    char operator()(int x) const { return 2 * x; }
+  };
+  static soa::Array<Functor, 10> FunctorArray;
+  // 5
+  printf("%d\n", FunctorArray[0](static_cast<char>(5)));
+  // 20
+  printf("%d\n", FunctorArray[0](10));
+
 #if 0
   A[0].c = 0;
   printf("%d\n", A[0].c.get());
