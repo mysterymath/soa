@@ -2,14 +2,11 @@
 #include <soa.h>
 #include <string.h>
 
-struct InnerStruct {
-  const char *char_ptr;
-};
-
 struct Struct {
-  int i;
+  char c;
 } s;
 
+/*
 struct Functor {
   int x;
   int operator()() const { return x; }
@@ -25,21 +22,27 @@ struct OpaqueStruct {
   int i;
 };
 
+*/
+
 struct Element {
   char c;
   int i;
+  const char *ptr;
   Struct s;
+  /*
   int array[3];
   Struct *struct_ptr;
   Functor functor;
   DerivedFunctor derived_functor;
   OpaqueStruct opaque;
+  */
 };
 
-#define SOA_STRUCT InnerStruct
-#define SOA_MEMBERS MEMBER(char_ptr)
+#define SOA_STRUCT Struct
+#define SOA_MEMBERS MEMBER(c)
 #include <soa-struct.inc>
 
+/*
 #define SOA_STRUCT Functor
 #define SOA_MEMBERS MEMBER(x)
 #include <soa-struct.inc>
@@ -47,22 +50,27 @@ struct Element {
 #define SOA_STRUCT DerivedFunctor
 #define SOA_MEMBERS MEMBER(i)
 #include <soa-struct.inc>
+*/
 
 #define SOA_STRUCT Element
 #define SOA_MEMBERS                                                            \
   MEMBER(c)                                                                    \
   MEMBER(i)                                                                    \
+  MEMBER(ptr)                                                                  \
   MEMBER(s)                                                                    \
-  MEMBER(struct_ptr)                                                           \
-  MEMBER(functor)                                                              \
-  MEMBER(derived_functor)                                                      \
-  MEMBER(opaque)                                                               \
-  MEMBER(array)
+  //MEMBER(struct_ptr)                                                           \
+  //MEMBER(functor)                                                              \
+  M//EMBER(derived_functor)                                                      \
+  //MEMBER(opaque)                                                               \
+  //MEMBER(array)
+
 #include <soa-struct.inc>
 
 extern soa::Array<Element, 100> A;
 
 int main() {
+  // TODO: Name these examples.
+  // TODO: Get rid of all but one of the gets.
   A[0].c = 0;
   printf("%d\n", A[0].c.get());
 
@@ -74,6 +82,16 @@ int main() {
 
   A[1].i = 4321;
   printf("%d\n", A[1].i.get());
+
+  A[0].ptr = "Hello";
+  printf("%s\n", A[0].ptr.get());
+  printf("%c\n", *A[0].ptr);
+
+  A[0].s = Struct{2};
+  printf("%d\n", A[0].s.c.get());
+  A[0].s.c = 3;
+  printf("%d\n", A[0].s.c);
+
   /*
     TestArray[10].i += 42;
     TestArray[10].inner.char_ptr = "Hello";
