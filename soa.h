@@ -319,12 +319,22 @@ template <typename T, uint8_t N> class Array {
   uint8_t ByteArrays[sizeof(T)][N];
 
 public:
-  [[clang::always_inline]] constexpr Array(
-      std::initializer_list<T> Entries = {}) {
+  // Note: This partially duplicates the logic in Ptr::operator=, but works for
+  // types like multidimensional arrays where assignment isn't defined.
+  [[clang::always_inline]] constexpr Array(std::initializer_list<T> Entries) {
     uint8_t Idx = 0;
-    for (const T Entry : Entries)
-      (*this)[Idx++] = Entry;
+    for (const T &Entry : Entries) {
+      const auto *Bytes = reinterpret_cast<const uint8_t *>(&Entry);
+#pragma unroll
+      for (uint8_t ByteIdx = 0; ByteIdx < sizeof(T); ++ByteIdx)
+        ByteArrays[ByteIdx][Idx] = Bytes[ByteIdx];
+      ++Idx;
+    }
   }
+
+  // Arrays cannot be assigned with operator= above, so provide a specific out
+  // to initialize them with nested initializer lists.
+  [[clang::always_inline]] constexpr Array() = default;
 
   template <uint8_t M>
   [[clang::always_inline]] constexpr Array(const Array<T, M> &Other) {

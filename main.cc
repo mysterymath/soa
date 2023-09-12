@@ -102,11 +102,28 @@ int main() {
   IntArray[1] = 0x1234;
   printf("%x\n", IntArray[1].get());
 
+  // This is true for array types as well. Indices into contained arrays must
+  // be compile-time constants; otherwise, the compiler will instantiate a
+  // temporary array of pointers, one per array element, and index through that.
+  static soa::Array<char[3], 10> CharArrayArray = {{42}};
+  printf("%d\n", CharArrayArray[0][0].get());
+  // At CharArrayArray + 2 * 10 + 1
+  CharArrayArray[1][2] = 43;
+  printf("%d\n", CharArrayArray[1][2].get());
+
+  static soa::Array<char[4][4], 10> CharMDArray;
+  // At CharMDArray + ((2 * 4) + 3) * 10 + 1 (whew!)
+  CharMDArray[1][2][3] = 44;
+  // Note that the first index can still be variable, and this would still use
+  // absolute indexed addressing. E.g., CharMDArray[x][2][3], but not
+  // CharMDArray[2][x][3].
+  printf("%d\n", CharMDArray[1][1][1].get());
+
   // Both indirection and the arrow operator are supported for pointer elements;
   // using these on the wrapper type forwards to the wrapped type.
   struct Struct {
     char c;
-  } s = {42};
+  } s = {45};
   static soa::Array<Struct *, 10> PtrArray;
   PtrArray[0] = &s;
   printf("%d\n", (*PtrArray[0]).c);
@@ -117,7 +134,7 @@ int main() {
   // produces a copy; the this pointer may be different on each invocation.
   struct MemberFunctions {
     const MemberFunctions *whoami() const { return this; }
-    char c() const { return 44; }
+    char c() const { return 46; }
   };
   static soa::Array<MemberFunctions, 10> MemberFunctionsArray;
   printf("%p\n", MemberFunctionsArray[0]->whoami());
